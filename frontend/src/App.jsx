@@ -3,6 +3,18 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Video, Wand2, Download, RotateCw, PlayCircle, Globe, Layout, Palette, Clock, CheckCircle2, AlertCircle, Moon, Sun, Info, Home } from 'lucide-react';
 import './index.css';
 
+// ─── Cookie helpers (persist user settings) ───────────────────────────────
+const setCookie = (name, value, days = 365) => {
+  const expires = new Date(Date.now() + days * 864e5).toUTCString();
+  document.cookie = `${name}=${encodeURIComponent(JSON.stringify(value))}; expires=${expires}; path=/; SameSite=Strict`;
+};
+const getCookie = (name) => {
+  const match = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
+  try { return match ? JSON.parse(decodeURIComponent(match[1])) : null; } catch { return null; }
+};
+const loadPref  = (key, fallback) => { const v = getCookie(`em_${key}`); return v !== null ? v : fallback; };
+const savePref  = (key, value)    => setCookie(`em_${key}`, value);
+
 const EXAMPLES = {
   ar: [
     "نظرية فيثاغورس مع رسم مثلث قائم",
@@ -78,20 +90,30 @@ const DICT = {
 };
 
 export default function App() {
-  const [lang, setLang] = useState('en');
-  const [darkMode, setDarkMode] = useState(false);
-  const [currentPage, setCurrentPage] = useState('home'); // 'home' | 'about'
+  const [lang, setLang] = useState(() => loadPref('lang', 'en'));
+  const [darkMode, setDarkMode] = useState(() => loadPref('dark', false));
+  const [currentPage, setCurrentPage] = useState('home');
   
   const [topic, setTopic] = useState('');
   const [loading, setLoading] = useState(false);
   const [videoUrl, setVideoUrl] = useState('');
   const [error, setError] = useState(null);
   
-  // Configuration Options
-  const [duration, setDuration] = useState(15);
-  const [style, setStyle] = useState('minimalist');
-  const [aspectRatio, setAspectRatio] = useState('16:9');
-  const [voiceEnabled, setVoiceEnabled] = useState(false);
+  // Configuration Options — restored from cookies
+  const [duration, setDuration]       = useState(() => loadPref('duration', 15));
+  const [style, setStyle]             = useState(() => loadPref('style', 'minimalist'));
+  const [aspectRatio, setAspectRatio] = useState(() => loadPref('aspect', '16:9'));
+  const [voiceEnabled, setVoiceEnabled] = useState(() => loadPref('voice', false));
+  const [voiceGender, setVoiceGender] = useState(() => loadPref('gender', 'female'));
+
+  // Persist settings to cookies whenever they change
+  useEffect(() => savePref('lang',     lang),        [lang]);
+  useEffect(() => savePref('dark',     darkMode),    [darkMode]);
+  useEffect(() => savePref('duration', duration),    [duration]);
+  useEffect(() => savePref('style',    style),       [style]);
+  useEffect(() => savePref('aspect',   aspectRatio), [aspectRatio]);
+  useEffect(() => savePref('voice',    voiceEnabled),[voiceEnabled]);
+  useEffect(() => savePref('gender',   voiceGender), [voiceGender]);
 
   const t = DICT[lang];
   const isRtl = lang === 'ar';
@@ -118,27 +140,41 @@ export default function App() {
     setError(null);
     setVideoUrl('');
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 180000); // 3 min timeout
+
     try {
       const res = await fetch('http://127.0.0.1:8000/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        signal: controller.signal,
         body: JSON.stringify({ 
           topic, 
           language: lang,
           duration,
           style,
           aspect_ratio: aspectRatio,
-          voice_enabled: voiceEnabled
+          voice_enabled: voiceEnabled,
+          voice_gender: voiceGender,
         }),
       });
+      clearTimeout(timeoutId);
       if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.detail || 'Server error');
+        const err = await res.json().catch(() => ({ detail: `Server error ${res.status}` }));
+        throw new Error(err.detail || `Server error ${res.status}`);
       }
       const data = await res.json();
       setVideoUrl(`http://127.0.0.1:8000${data.video_url}`);
     } catch (err) {
-      setError(err.message);
+      clearTimeout(timeoutId);
+      if (err.name === 'AbortError') {
+        setError('Request timed out after 3 minutes. The server may be busy — please try again.');
+      } else if (err.message === 'Failed to fetch' || err.message === 'NetworkError when attempting to fetch resource.') {
+        setError('Cannot connect to the backend. Make sure the server is running on port 8000.');
+      } else {
+        // Show the actual server error message
+        setError(err.message);
+      }
     } finally {
       setLoading(false);
     }
@@ -327,13 +363,29 @@ export default function App() {
                     <div className="flex items-center justify-between text-slate-700 dark:text-slate-300 text-sm font-semibold">
                       <span className="flex items-center gap-2"><Video className="w-4 h-4 text-emerald-500" /> {t.voiceover}</span>
                     </div>
+                    {/* ON / OFF toggle */}
                     <button 
                       type="button"
                       onClick={() => setVoiceEnabled(!voiceEnabled)}
-                      className={`mt-3 py-1.5 rounded-lg text-xs font-bold transition-colors border ${voiceEnabled ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800' : 'bg-slate-50 dark:bg-slate-900 text-slate-400 border-slate-200 dark:border-slate-700'}`}
+                      className={`mt-2 py-1.5 rounded-lg text-xs font-bold transition-colors border ${voiceEnabled ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800' : 'bg-slate-50 dark:bg-slate-900 text-slate-400 border-slate-200 dark:border-slate-700'}`}
                     >
-                      {voiceEnabled ? 'ON' : 'OFF'}
+                      {voiceEnabled ? '🎙️ ON' : 'OFF'}
                     </button>
+                    {/* Gender selector — shown only when voice is ON */}
+                    {voiceEnabled && (
+                      <div className="flex gap-1 mt-2">
+                        <button
+                          type="button"
+                          onClick={() => setVoiceGender('female')}
+                          className={`flex-1 py-1 rounded-md text-xs font-bold border transition-colors ${voiceGender === 'female' ? 'bg-pink-50 dark:bg-pink-900/30 text-pink-600 border-pink-300' : 'bg-slate-50 dark:bg-slate-900 text-slate-400 border-slate-200 dark:border-slate-700'}`}
+                        >♀ {lang === 'ar' ? 'أنثى' : 'Female'}</button>
+                        <button
+                          type="button"
+                          onClick={() => setVoiceGender('male')}
+                          className={`flex-1 py-1 rounded-md text-xs font-bold border transition-colors ${voiceGender === 'male' ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 border-blue-300' : 'bg-slate-50 dark:bg-slate-900 text-slate-400 border-slate-200 dark:border-slate-700'}`}
+                        >♂ {lang === 'ar' ? 'ذكر' : 'Male'}</button>
+                      </div>
+                    )}
                   </div>
                 </div>
               </form>
@@ -426,8 +478,8 @@ export default function App() {
             <div className="relative w-full aspect-square md:aspect-auto md:h-full flex items-start justify-center [perspective:1400px] mt-10 lg:mt-0 xl:-ml-10">
               
               <motion.div 
-                initial={{ opacity: 0, rotateX: 20, rotateY: isRtl ? 25 : -25, rotateZ: 0, scale: 0.9, y: 30 }}
-                animate={{ opacity: 1, rotateX: 20, rotateY: isRtl ? 15 : -15, rotateZ: 0, scale: 1, y: -40 }}
+                initial={{ opacity: 0, rotateX: 0, rotateY: isRtl ? 25 : -25, rotateZ: 0, scale: 0.9, y: 30 }}
+                animate={{ opacity: 1, rotateX: 0, rotateY: isRtl ? 15 : -15, rotateZ: 0, scale: 1, y: -40 }}
                 transition={{ duration: 1.2, ease: "easeOut" }}
                 style={{ transformStyle: 'preserve-3d' }}
                 className="relative w-full max-w-lg flex flex-col items-center justify-center 2xl:scale-110 origin-top"
