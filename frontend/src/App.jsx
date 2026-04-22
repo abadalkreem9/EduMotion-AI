@@ -30,7 +30,9 @@ const EXAMPLES = {
   ]
 };
 
-const SAMPLE_VIDEO = "http://127.0.0.1:8000/video/media/videos/scene_4933795092450800427/480p15/MainScene.mp4";
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000";
+
+const SAMPLE_VIDEO = `${API_BASE}/video/media/videos/scene_4933795092450800427/480p15/MainScene.mp4`;
 
 const DICT = {
   ar: {
@@ -144,7 +146,7 @@ export default function App() {
     const timeoutId = setTimeout(() => controller.abort(), 180000); // 3 min timeout
 
     try {
-      const res = await fetch('http://127.0.0.1:8000/generate', {
+      const res = await fetch(`${API_BASE}/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         signal: controller.signal,
@@ -164,7 +166,7 @@ export default function App() {
         throw new Error(err.detail || `Server error ${res.status}`);
       }
       const data = await res.json();
-      setVideoUrl(`http://127.0.0.1:8000${data.video_url}`);
+      setVideoUrl(`${API_BASE}${data.video_url}`);
     } catch (err) {
       clearTimeout(timeoutId);
       if (err.name === 'AbortError') {
