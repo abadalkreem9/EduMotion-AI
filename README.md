@@ -11,7 +11,7 @@
 # 🎬 EduMotion AI
 ### *Turn Any Idea Into an Educational Video — In Seconds*
 
-> **Built for AIventra Hackathon 2026** · Organized by Hackhere
+
 
 [**🚀 Live Demo**](#) · [**📽 Watch Demo Video**](#demo-video) · [**📖 Documentation**](#architecture)
 
@@ -21,10 +21,9 @@
 
 ## 📽 Demo Video
 
-> 🎬 *A full walkthrough of EduMotion AI generating an educational video on Bubble Sort using Manim + AI voiceover.*
+> 🎬 *EduMotion AI — توليد فيديو تعليمي متحرك تلقائياً باستخدام الذكاء الاصطناعي*
 
-<!-- Replace this URL with your actual demo video link after recording -->
-[![EduMotion AI Demo](https://img.shields.io/badge/▶_Watch_Demo-YouTube-FF0000?style=for-the-badge&logo=youtube)](https://youtu.be/PLACEHOLDER)
+<div style="padding:75% 0 0 0;position:relative;"><iframe src="https://player.vimeo.com/video/1185380479?badge=0&amp;autopause=0&amp;player_id=0&amp;app_id=58479" frameborder="0" allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media; web-share" referrerpolicy="strict-origin-when-cross-origin" style="position:absolute;top:0;left:0;width:100%;height:100%;" title="EduMotion AI — Demo Walkthrough"></iframe></div><script src="https://player.vimeo.com/api/player.js"></script>
 
 ---
 
@@ -240,7 +239,7 @@ During development, we faced constant `503 Service Unavailable` errors and quota
 
 ## 👥 Team
 
-Built with ❤️ in 24 hours for **AIventra Hackathon 2026** by Mohammed Salah.
+Built with ❤️ by Mohammed Salah.
 
 | Role | Contribution |
 |---|---|
@@ -260,6 +259,6 @@ MIT License — feel free to build on this!
 
 **⭐ If EduMotion helped you, give it a star!**
 
-*Built for [AIventra Hackathon](https://hackhere.in) · Powered by Google Gemini · April 2026*
+*Powered by Google Gemini · April 2026*
 
 </div>
