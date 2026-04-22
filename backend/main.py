@@ -20,9 +20,8 @@ app = FastAPI(
     redoc_url=None,
 )
 
-# ─── CORS — read from .env, fallback to localhost only ───────────────────
-_raw_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173")
-ALLOWED_ORIGINS = [o.strip() for o in _raw_origins.split(",") if o.strip()]
+# ─── CORS — allow all for hackathon ───────────────────────────────────────
+ALLOWED_ORIGINS = ["*"]
 
 app.add_middleware(
     CORSMiddleware,
